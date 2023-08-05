@@ -1,14 +1,15 @@
 import csv
 import matplotlib.pyplot as plt
-from datetime import datetime
 from math import sqrt, cos, sin, acos
 from numpy import linalg, dot
 
 print("defining variables...")
 
-filename = "Sensor_record_20230804_171014_AndroSensor.csv"
+filename = "Sensor_record_20230805_092758_AndroSensor.csv"
 
 unit_gravity = (0, 0, 1)
+
+average_n_values = 20 # number of points to average into a single point on the graphs
 
 X_accelerations: list[float] = []
 Y_accelerations: list[float] = []
@@ -47,9 +48,9 @@ with open(filename, 'r', encoding = "UTF-8") as file:
 print("finding indices...")
 
 # find column indices of variables
-X_acceleration_index = find_index("LINEAR ACCELERATION X (m/s²)", rows[0])
-Y_acceleration_index = find_index("LINEAR ACCELERATION Y (m/s²)", rows[0])
-Z_acceleration_index = find_index("LINEAR ACCELERATION Z (m/s²)", rows[0])
+X_acceleration_index = find_index("ACCELEROMETER X (m/s²)", rows[0])
+Y_acceleration_index = find_index("ACCELEROMETER Y (m/s²)", rows[0])
+Z_acceleration_index = find_index("ACCELEROMETER Z (m/s²)", rows[0])
 
 X_gravity_index = find_index("GRAVITY X (m/s²)", rows[0])
 Y_gravity_index = find_index("GRAVITY Y (m/s²)", rows[0])
@@ -57,7 +58,7 @@ Z_gravity_index = find_index("GRAVITY Z (m/s²)", rows[0])
 
 milliseconds_index = find_index("Time since start in ms ", rows[0])
 
-print("processing data...")
+print("copying data into lists...")
 
 for row in rows[1:]:
     seconds_since_start = float(row[milliseconds_index])/1000
@@ -83,6 +84,10 @@ for row in rows[1:]:
 
     sum_accelerations.append(sqrt(X_acceleration**2 + Y_acceleration**2 + Z_acceleration**2))
 
+print("{:.1f} datapoints per second".format(len(rows)/seconds_since_starts[-1]))
+
+print("calculating matrix transformation...")
+
 average_gravity = (sum(X_gravities)/len(X_gravities), sum(Y_gravities)/len(Y_gravities), sum(Z_gravities)/len(Z_gravities))
 gravity_magnitude = sqrt(sum([i**2 for i in average_gravity]))
 unit_average_gravity = tuple([i/gravity_magnitude for i in average_gravity]) # direction of negative Z
@@ -98,11 +103,24 @@ convert_phone_XYZ_into_car_XYZ_matrix = ((cos(beta)*cos(gamma), sin(alpha)*sin(b
                                          (cos(beta)*sin(gamma), sin(alpha)*sin(beta)*sin(gamma) + cos(alpha)*cos(gamma), cos(alpha)*sin(beta)*sin(gamma) - sin(alpha)*cos(gamma)),
                                          (-sin(beta), sin(alpha)*cos(beta), cos(alpha)*cos(beta)))
 
+print("transforming all values...")
+
 for i in range(len(X_gravities)):
-    X_car_acceleration, Y_car_acceleration, Z_car_acceleration = tuple(linalg.solve(convert_phone_XYZ_into_car_XYZ_matrix, (X_gravities[i], Y_gravities[i], Z_gravities[i])))
+    X_car_acceleration, Y_car_acceleration, Z_car_acceleration = tuple(linalg.solve(convert_phone_XYZ_into_car_XYZ_matrix, (X_accelerations[i], Y_accelerations[i], Z_accelerations[i])))
     X_car_accelerations.append(X_car_acceleration)
     Y_car_accelerations.append(Y_car_acceleration)
     Z_car_accelerations.append(Z_car_acceleration)
+
+if average_n_values > 1:
+    print("averaging values over {} points".format(average_n_values))
+
+    for i in range(len(X_gravities) - average_n_values):
+        X_car_acceleration = sum(X_car_accelerations[i:i+average_n_values])/average_n_values
+        Y_car_acceleration = sum(Y_car_accelerations[i:i+average_n_values])/average_n_values
+        Z_car_acceleration = sum(Z_car_accelerations[i:i+average_n_values])/average_n_values    
+        X_car_accelerations[i] = X_car_acceleration
+        Y_car_accelerations[i] = Y_car_acceleration
+        Z_car_accelerations[i] = Z_car_acceleration
 
 print("plotting...")
 
@@ -112,7 +130,7 @@ plt.scatter(seconds_since_starts, sum_accelerations, s = 3)
 
 plt.xlabel("Time from Start (s)")
 plt.ylabel("Net Acceleration (m/s²)")
-plt.title("Net Acceleration of Beedle, Driving from Windsor Parkade to Home")
+plt.title("Net Acceleration of Kia Sorento")
 plt.xticks(rotation=45)
 plt.grid()
 plt.tight_layout()
@@ -124,8 +142,8 @@ plt.scatter(seconds_since_starts, Y_car_accelerations, s=3)
 plt.scatter(seconds_since_starts, Z_car_accelerations, s=3)
 
 plt.xlabel("Time from Start (s)")
-plt.ylabel("Linear Acceleration (m/s²)")
-plt.title("Linear Acceleration of Beedle, Driving from Windsor Parkade to Home")
+plt.ylabel("Acceleration (m/s²)")
+plt.title("Acceleration of Kia Sorento")
 plt.xticks(rotation=45)
 plt.grid()
 plt.tight_layout()
