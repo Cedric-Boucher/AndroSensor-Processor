@@ -5,9 +5,7 @@ from numpy import linalg, dot
 
 print("defining variables...")
 
-filename = "Sensor_record_20230805_092758_AndroSensor.csv"
-
-unit_gravity = (0, 0, 1)
+filename = "Sensor_record_20230805_092308_AndroSensor.csv"
 
 average_n_values = 20 # number of points to average into a single point on the graphs
 
@@ -18,10 +16,6 @@ Z_accelerations: list[float] = []
 X_car_accelerations: list[float] = []
 Y_car_accelerations: list[float] = []
 Z_car_accelerations: list[float] = []
-
-X_gravities: list[float] = []
-Y_gravities: list[float] = []
-Z_gravities: list[float] = []
 
 sum_accelerations: list[float] = []
 seconds_since_starts: list[float] = []
@@ -52,10 +46,6 @@ X_acceleration_index = find_index("ACCELEROMETER X (m/s²)", rows[0])
 Y_acceleration_index = find_index("ACCELEROMETER Y (m/s²)", rows[0])
 Z_acceleration_index = find_index("ACCELEROMETER Z (m/s²)", rows[0])
 
-X_gravity_index = find_index("GRAVITY X (m/s²)", rows[0])
-Y_gravity_index = find_index("GRAVITY Y (m/s²)", rows[0])
-Z_gravity_index = find_index("GRAVITY Z (m/s²)", rows[0])
-
 milliseconds_index = find_index("Time since start in ms ", rows[0])
 
 print("copying data into lists...")
@@ -67,10 +57,6 @@ for row in rows[1:]:
     Y_acceleration = float(row[Y_acceleration_index])
     Z_acceleration = float(row[Z_acceleration_index])
 
-    X_gravity = float(row[X_gravity_index])
-    Y_gravity = float(row[Y_gravity_index])
-    Z_gravity = float(row[Z_gravity_index])
-
     # append data to lists
     seconds_since_starts.append(seconds_since_start)
 
@@ -78,17 +64,13 @@ for row in rows[1:]:
     Y_accelerations.append(Y_acceleration)
     Z_accelerations.append(Z_acceleration)
 
-    X_gravities.append(X_gravity)
-    Y_gravities.append(Y_gravity)
-    Z_gravities.append(Z_gravity)
-
     sum_accelerations.append(sqrt(X_acceleration**2 + Y_acceleration**2 + Z_acceleration**2))
 
 print("{:.1f} datapoints per second".format(len(rows)/seconds_since_starts[-1]))
 
 print("calculating matrix transformation...")
 
-average_gravity = (sum(X_gravities)/len(X_gravities), sum(Y_gravities)/len(Y_gravities), sum(Z_gravities)/len(Z_gravities))
+average_gravity = (sum(X_accelerations)/len(X_accelerations), sum(Y_accelerations)/len(Y_accelerations), sum(Z_accelerations)/len(Z_accelerations))
 gravity_magnitude = sqrt(sum([i**2 for i in average_gravity]))
 unit_average_gravity = tuple([i/gravity_magnitude for i in average_gravity]) # direction of negative Z
 # this is where world -Z is in terms of phone XYZ
@@ -98,23 +80,24 @@ unit_average_gravity = tuple([i/gravity_magnitude for i in average_gravity]) # d
 # using Talt-Bryan angles
 gamma = 0 # rotation about Z-axis
 beta = 0 # rotation about Y-axis
-alpha = -acos(dot(unit_average_gravity, unit_gravity)) # rotation about X-axis
+alpha = acos(dot(unit_average_gravity, (0, 0, 1))) # rotation about X-axis
+print("rotating about X-axis by {:.2f} degrees".format(alpha*180/3.14159))
 convert_phone_XYZ_into_car_XYZ_matrix = ((cos(beta)*cos(gamma), sin(alpha)*sin(beta)*cos(gamma) - cos(alpha)*sin(gamma), cos(alpha)*sin(beta)*cos(gamma) + sin(alpha)*sin(gamma)),
                                          (cos(beta)*sin(gamma), sin(alpha)*sin(beta)*sin(gamma) + cos(alpha)*cos(gamma), cos(alpha)*sin(beta)*sin(gamma) - sin(alpha)*cos(gamma)),
                                          (-sin(beta), sin(alpha)*cos(beta), cos(alpha)*cos(beta)))
 
 print("transforming all values...")
 
-for i in range(len(X_gravities)):
+for i in range(len(X_accelerations)):
     X_car_acceleration, Y_car_acceleration, Z_car_acceleration = tuple(linalg.solve(convert_phone_XYZ_into_car_XYZ_matrix, (X_accelerations[i], Y_accelerations[i], Z_accelerations[i])))
     X_car_accelerations.append(X_car_acceleration)
     Y_car_accelerations.append(Y_car_acceleration)
     Z_car_accelerations.append(Z_car_acceleration)
 
 if average_n_values > 1:
-    print("averaging values over {} points".format(average_n_values))
+    print("averaging values over {} points ({:.2f} seconds)".format(average_n_values, average_n_values/(len(rows)/seconds_since_starts[-1])))
 
-    for i in range(len(X_gravities) - average_n_values):
+    for i in range(len(X_accelerations) - average_n_values):
         X_car_acceleration = sum(X_car_accelerations[i:i+average_n_values])/average_n_values
         Y_car_acceleration = sum(Y_car_accelerations[i:i+average_n_values])/average_n_values
         Z_car_acceleration = sum(Z_car_accelerations[i:i+average_n_values])/average_n_values    
