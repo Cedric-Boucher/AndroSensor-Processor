@@ -5,9 +5,9 @@ from numpy import linalg, dot
 
 print("defining variables...")
 
-filename = "Sensor_record_20230805_092308_AndroSensor.csv"
+filename = "Sensor_record_20230909_192401_AndroSensor.csv"
 
-average_n_values = 20 # number of points to average into a single point on the graphs
+average_n_values = 1000 # number of points to average into a single point on the graphs
 
 X_accelerations: list[float] = []
 Y_accelerations: list[float] = []
@@ -80,7 +80,7 @@ unit_average_gravity = tuple([i/gravity_magnitude for i in average_gravity]) # d
 # using Talt-Bryan angles
 gamma = 0 # rotation about Z-axis
 beta = 0 # rotation about Y-axis
-alpha = acos(dot(unit_average_gravity, (0, 0, 1))) # rotation about X-axis
+alpha = -acos(dot(unit_average_gravity, (0, 0, 1))) # rotation about X-axis
 print("rotating about X-axis by {:.2f} degrees".format(alpha*180/3.14159))
 convert_phone_XYZ_into_car_XYZ_matrix = ((cos(beta)*cos(gamma), sin(alpha)*sin(beta)*cos(gamma) - cos(alpha)*sin(gamma), cos(alpha)*sin(beta)*cos(gamma) + sin(alpha)*sin(gamma)),
                                          (cos(beta)*sin(gamma), sin(alpha)*sin(beta)*sin(gamma) + cos(alpha)*cos(gamma), cos(alpha)*sin(beta)*sin(gamma) - sin(alpha)*cos(gamma)),
@@ -100,7 +100,8 @@ if average_n_values > 1:
     for i in range(len(X_accelerations) - average_n_values):
         X_car_acceleration = sum(X_car_accelerations[i:i+average_n_values])/average_n_values
         Y_car_acceleration = sum(Y_car_accelerations[i:i+average_n_values])/average_n_values
-        Z_car_acceleration = sum(Z_car_accelerations[i:i+average_n_values])/average_n_values    
+        Z_car_acceleration = sum(Z_car_accelerations[i:i+average_n_values])/average_n_values
+
         X_car_accelerations[i] = X_car_acceleration
         Y_car_accelerations[i] = Y_car_acceleration
         Z_car_accelerations[i] = Z_car_acceleration
@@ -113,7 +114,7 @@ plt.scatter(seconds_since_starts, sum_accelerations, s = 3)
 
 plt.xlabel("Time from Start (s)")
 plt.ylabel("Net Acceleration (m/s²)")
-plt.title("Net Acceleration of Kia Sorento")
+plt.title("Net Acceleration of Honda Civic")
 plt.xticks(rotation=45)
 plt.grid()
 plt.tight_layout()
@@ -126,7 +127,7 @@ plt.scatter(seconds_since_starts, Z_car_accelerations, s=3)
 
 plt.xlabel("Time from Start (s)")
 plt.ylabel("Acceleration (m/s²)")
-plt.title("Acceleration of Kia Sorento")
+plt.title("Acceleration of Honda Civic")
 plt.xticks(rotation=45)
 plt.grid()
 plt.tight_layout()
